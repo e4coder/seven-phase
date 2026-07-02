@@ -95,11 +95,13 @@ Setup:
    `gitea-mcp` binary (it speaks Forgejo's API). Put `gitea-mcp` on your PATH, or swap
    `mcpServers.forgejo.command`/`args` in `.claude-plugin/plugin.json` for a
    `docker run -i ... docker.gitea.com/gitea-mcp-server` invocation.
-2. Export the connection - use a token with **create-PR + comment** scope (repository +
-   issue write). It never merges or resolves, so it does not need admin/merge scope:
+2. Export the connection - the bot token needs **repository + issue write** (for PRs and
+   comments) plus **`write:user`** (Forgejo gates repo creation via `POST /user/repos`
+   under the user scope, which `/seven-phase:init` uses to auto-create the dev-cycle repo).
+   It never merges, so it does not need admin scope:
 
        export FORGEJO_HOST=https://forgejo.bunyad.space
-       export FORGEJO_TOKEN=<bot token: repo + issue write>
+       export FORGEJO_TOKEN=<bot token: repo + issue write + write:user>
        export FORGEJO_REVIEWER=<your Forgejo username>   # added as admin collaborator
 
    Unset vars degrade gracefully (the server just can't connect until you set them), so
