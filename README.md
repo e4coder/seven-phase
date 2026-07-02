@@ -98,15 +98,20 @@ Setup:
 2. Export the connection - use a token with **create-PR + comment** scope (repository +
    issue write). It never merges or resolves, so it does not need admin/merge scope:
 
-       export FORGEJO_HOST=https://git.example.com
-       export FORGEJO_TOKEN=<token: repo + issue write, no merge>
+       export FORGEJO_HOST=https://forgejo.bunyad.space
+       export FORGEJO_TOKEN=<bot token: repo + issue write>
+       export FORGEJO_REVIEWER=<your Forgejo username>   # added as admin collaborator
 
    Unset vars degrade gracefully (the server just can't connect until you set them), so
    the plugin never breaks a session for non-Forgejo users.
-3. Point the repo at Forgejo and record owner/repo:
+3. Run init inside the repo. It provisions the Forgejo dev-cycle mirror for you:
 
-       git remote add forgejo https://git.example.com/<owner>/<repo>.git
-       /seven-phase:init "go test ./..."     # also writes .llm/forgejo from the remote
+       /seven-phase:init "go test ./..."     # creates the repo, adds you as admin
+                                             # collaborator, wires the `forgejo` remote
+
+   Forgejo is a dev-cycle mirror: feature branches + PRs live there for review, but the
+   source of truth is `origin`. After phase 6, you merge to your main branch and push to
+   `origin` by hand.
 
 Then, per feature:
 
