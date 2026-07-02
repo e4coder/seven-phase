@@ -15,12 +15,21 @@ phase; update only the current phase's section.
   (structs / interfaces / TODOs), STOP. Do not improvise. State exactly what is missing
   and which earlier phase must change; the human will rewind.
 - Touch only what the phase allows. No drive-by edits, no extra files, no new
-  dependencies, no MCP servers unless the plan says so.
+  dependencies, no MCP servers. The sole sanctioned MCP surface is the Forgejo server used
+  by /seven-phase:review: it reads PR comments, may open the feature's PR and post one
+  summary reply, but never resolves threads, merges, closes, or advances a phase. That
+  server's write tools are coarse, so this restraint is a rule /seven-phase:review must
+  self-enforce, not a limit the tool whitelist can impose.
 - Each phase ends by committing its own work:
-  `git add -A && git commit -m "phaseN(<feature>): <summary>"`.
+  `git add -A && git commit -m "phaseN(<feature>): <summary>"`, then, if a `forgejo`
+  remote exists, `git push forgejo HEAD` so the open PR reflects this phase.
   Phase 4 commits only its report.
 - Validate with the command in `.llm/validation` (set once per repo via
   /seven-phase:init). Never weaken tests or invariants to make validation pass.
+- Human review lives on the feature's Forgejo PR (one PR per `feat/<feature>` branch,
+  open across every code-writing phase). Consume PR comments ONLY via
+  /seven-phase:review, which addresses them within the current phase and NEVER advances a
+  phase. Reading a comment is not permission to self-advance.
 - Be terse. No preamble. Show diffs, not essays.
 
 ## Phase contract

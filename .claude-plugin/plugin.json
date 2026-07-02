@@ -1,10 +1,17 @@
 {
   "name": "seven-phase",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Human-gated 7-phase LLM programming pipeline: structs -> interfaces -> todos -> dry-run -> invariants -> implement.",
   "author": { "name": "Nomi" },
   "repository": "https://github.com/e4coder/seven-phase",
   "license": "MIT",
   "commands": "./commands",
-  "hooks": "./hooks/hooks.json"
+  "hooks": "./hooks/hooks.json",
+  "mcpServers": {
+    "forgejo": {
+      "command": "gitea-mcp",
+      "args": ["-t", "stdio", "-H", "${FORGEJO_HOST:-https://localhost:3000}"],
+      "env": { "GITEA_ACCESS_TOKEN": "${FORGEJO_TOKEN:-}" }
+    }
+  }
 }

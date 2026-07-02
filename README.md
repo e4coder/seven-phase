@@ -68,6 +68,58 @@ fix it, and continue forward.
 - Each phase commits its own work, so phase 4 always enters from a clean HEAD and its
   `git stash -u && git stash drop` revert only ever discards the throwaway implementation.
 
+## Forgejo review loop (optional)
+
+Review each phase on a Forgejo PR instead of only the inline VS Code diff, and let Claude
+pull your comments back in before you advance.
+
+One PR per feature branch (`feat/<f>`), open across every code-writing phase. Each phase
+commits and - if a `forgejo` remote exists - pushes, so the PR always reflects the latest
+phase. You leave line comments per phase; `/seven-phase:review <f>` reads them (via the
+MCP server) and addresses them **within the current phase**, then commits and pushes. On
+Forgejo it does only two writes: it opens the feature's PR if one isn't open yet, and
+posts a single summary comment ("Addressed X in `<sha>`, deferred Y"). It never resolves
+threads, merges, or advances a phase - you do that by hand. A comment asking for
+out-of-phase work is reported as a rewind signal, not acted on.
+
+> **Guardrail note.** `gitea-mcp` (v1.3.0) exposes coarse, mode-based write tools -
+> `pull_request_write` also merges/closes/reopens and `issue_write` also closes/edits - so
+> the `allowed-tools` whitelist *cannot* isolate "open PR" / "comment" from merge/close.
+> The "never merge/close/advance" rule is enforced by the `review.md` prompt, which
+> restricts Claude to `method:"create"` (open PR) and `method:"add_comment"` (reply) only -
+> not by the permission layer. Keep claude-bot's token minimal and glance at its PR activity.
+
+Setup:
+
+1. Install the MCP server. The plugin bundles a `forgejo` server that runs the official
+   `gitea-mcp` binary (it speaks Forgejo's API). Put `gitea-mcp` on your PATH, or swap
+   `mcpServers.forgejo.command`/`args` in `.claude-plugin/plugin.json` for a
+   `docker run -i ... docker.gitea.com/gitea-mcp-server` invocation.
+2. Export the connection - use a token with **create-PR + comment** scope (repository +
+   issue write). It never merges or resolves, so it does not need admin/merge scope:
+
+       export FORGEJO_HOST=https://git.example.com
+       export FORGEJO_TOKEN=<token: repo + issue write, no merge>
+
+   Unset vars degrade gracefully (the server just can't connect until you set them), so
+   the plugin never breaks a session for non-Forgejo users.
+3. Point the repo at Forgejo and record owner/repo:
+
+       git remote add forgejo https://git.example.com/<owner>/<repo>.git
+       /seven-phase:init "go test ./..."     # also writes .llm/forgejo from the remote
+
+Then, per feature:
+
+       /seven-phase:phase1 <f>    # commits + pushes feat/<f>
+       /seven-phase:review <f>    # opens the PR if missing, then stops (no comments yet)
+       # ... review on Forgejo, leave line comments ...
+       /seven-phase:review <f>    # reads comments, fixes within phase 1, replies + pushes
+       /seven-phase:phase2 <f>    # you advance, by hand, when satisfied
+
+To use a Forgejo-native MCP server instead of `gitea-mcp`, keep the server key named
+`forgejo` and update the `command`/`args` plus the `mcp__forgejo__*` tool names in
+`commands/review.md` to match that server's tool set.
+
 ## Optional hard gate (hooks)
 
 `hooks/hooks.json` wires two hooks:
