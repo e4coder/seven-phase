@@ -1,6 +1,6 @@
 {
-  "name": "nomi-tools",
-  "owner": { "name": "Nomi" },
+  "name": "seven-phase",
+  "owner": { "name": "e4coder" },
   "plugins": [
     {
       "name": "seven-phase",
