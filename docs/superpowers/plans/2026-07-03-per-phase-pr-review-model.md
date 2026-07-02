@@ -235,60 +235,63 @@ git commit -m "feat(phase-flow): per-phase-PR plumbing (start/finish/merge-final
 ## Task 2: Wire the phase commands to `phase-flow.sh`
 
 **Files:**
-- Modify: `commands/phase0.md`, `phase1.md`, `phase2.md`, `phase3.md`, `phase4.md`, `phase5.md`, `phase6.md`
+- Modify: `commands/phase0.md`, `phase1.md`, `phase2.md`, `phase3.md`, `phase4.md`, `phase5.md`, `phase6.md`, `commands/init.md`
 
 **Interfaces:**
 - Consumes: `phase-flow.sh start|finish` (Task 1).
 - Produces: phase commands that branch/PR per phase.
 
-- [ ] **Step 1: Add the `start` call to each phase command (before Claude's work)**
+**Timing rule (critical, verified against Claude Code docs):** EVERY `` !`...` `` line in a command runs at command-EXPANSION time, BEFORE the model does any work. So `start` (pre-work: merge the prior PR, cut the branch) is a `` !`...` `` line, but `finish` (post-work: push the branch, open its PR) MUST be a plain instruction the model runs AFTER committing — a `` !`finish` `` would push an empty branch. Also `${CLAUDE_PLUGIN_ROOT}` is NOT reliably set in the model's Bash env, so the `start` `` !`...` `` line records the plugin root to `.llm/.pluginroot` (where `${CLAUDE_PLUGIN_ROOT}` does expand), and the `finish` instruction reads it back via `$(cat .llm/.pluginroot)`.
 
-In every `commands/phaseN.md`, immediately AFTER the line that inlines PROTOCOL (`!`cat "${CLAUDE_PLUGIN_ROOT}/PROTOCOL.md"``), insert this line (it is inert without Forgejo, so the original flow is unchanged for non-Forgejo users):
+- [ ] **Step 1: Capture the plugin root + call `start` (all 7 phase files)**
 
-```markdown
-!`bash "${CLAUDE_PLUGIN_ROOT}/scripts/phase-flow.sh" start $ARGUMENTS N`
-```
-
-Replace `N` with the phase number of that file (0 in phase0.md, 1 in phase1.md, … 6 in phase6.md).
-
-- [ ] **Step 2: Add the `finish` call to each phase command's commit step (phases 0,1,2,3,5,6)**
-
-In `phase0.md`, `phase1.md`, `phase2.md`, `phase3.md`, `phase5.md`, `phase6.md`, find the commit step (the numbered step containing `git add -A && git commit -m "phaseN(...)..."`) and append, on a new line right after it:
+In every `commands/phaseN.md`, immediately AFTER the PROTOCOL inline line (`` !`cat "${CLAUDE_PLUGIN_ROOT}/PROTOCOL.md"` ``), insert this single `` !`...` `` line (inert without Forgejo, so the original flow is unchanged for non-Forgejo users):
 
 ```markdown
-   Then open/refresh this phase's PR:
-   !`bash "${CLAUDE_PLUGIN_ROOT}/scripts/phase-flow.sh" finish $ARGUMENTS N`
+!`mkdir -p .llm; echo "${CLAUDE_PLUGIN_ROOT}" > .llm/.pluginroot; bash "${CLAUDE_PLUGIN_ROOT}/scripts/phase-flow.sh" start $ARGUMENTS N`
 ```
 
-Replace `N` with that file's phase number.
+Replace `N` with that file's phase number (0 in phase0.md … 6 in phase6.md). This runs BEFORE the model acts: it records the plugin root to `.llm/.pluginroot` for Step 2, and runs `start` (with Forgejo: squash-merge the open phase PR into `feat/<f>` and cut `feat/<f>-pN`; phase 0 creates `feat/<f>`; phase 4 stays on `feat/<f>`).
+
+- [ ] **Step 2: Replace the raw push with a post-commit `finish` INSTRUCTION (phases 0,1,2,3,5,6)**
+
+Each of `phase0.md`, `phase1.md`, `phase2.md`, `phase3.md`, `phase5.md`, `phase6.md` currently ends its commit step with a `git push forgejo HEAD` clause (added by a prior feature). `finish` supersedes that raw push (it pushes the phase branch AND opens/refreshes the phase PR), so REPLACE that clause with a finish instruction the MODEL runs after committing. Example — phase1.md's commit step becomes:
+
+```markdown
+4. Commit: `git add -A && git commit -m "phase1($ARGUMENTS): data structures"`, then open/refresh this phase's PR by running `bash "$(cat .llm/.pluginroot)/scripts/phase-flow.sh" finish $ARGUMENTS 1`.
+```
+
+Do the same in each of the six files, keeping that file's existing commit-message text and using its phase number. This is a plain instruction (NOT a `` !`...` `` line — those run before the commit exists); it reads the plugin root from `.llm/.pluginroot`. No `git push forgejo HEAD` may remain in any phase file.
 
 - [ ] **Step 3: Phase 4 special-case (`phase4.md`)**
 
-`phase4.md` already keeps only its report and reverts the throwaway via `git stash`. It gets the `start 4` call from Step 1 (which merges phase 3's PR onto `feat/<f>` and stays there), but its commit step must call `finish` for **phase 4**, which pushes `feat/<f>` and opens no PR. Append after phase4.md's report-commit step:
+`phase4.md` gets the Step-1 `start 4` line (which merges phase 3's open PR onto `feat/<f>` and stays there — no phase branch). Its report-commit step (step 7) ends with the same raw push; REPLACE that clause with a `finish 4` instruction (pushes `feat/<f>`, opens no PR):
 
 ```markdown
-   Then push the integration branch (phase 4 opens no PR):
-   !`bash "${CLAUDE_PLUGIN_ROOT}/scripts/phase-flow.sh" finish $ARGUMENTS 4`
+7. Commit only the report: `git add .llm/$ARGUMENTS/plan.md && git commit -m "phase4($ARGUMENTS): dry-run report"`, then run `bash "$(cat .llm/.pluginroot)/scripts/phase-flow.sh" finish $ARGUMENTS 4`.
 ```
 
-- [ ] **Step 4: Verify each phase file wires start + finish**
+- [ ] **Step 4: Gitignore the captured path (`commands/init.md`)**
+
+`.llm/.pluginroot` holds a machine-specific absolute path and must not be committed. In `commands/init.md` step 3 (which currently ensures the line `.llm/.phase` is in `.gitignore`), change it to ensure BOTH `.llm/.phase` and `.llm/.pluginroot` are present (each appended only if missing).
+
+- [ ] **Step 5: Verify**
 
 Run:
 ```bash
-grep -c 'phase-flow.sh" start'  commands/phase{0,1,2,3,4,5,6}.md
-grep -c 'phase-flow.sh" finish' commands/phase{0,1,2,3,4,5,6}.md
+for n in 0 1 2 3 4 5 6; do printf "phase%s: start=%s finish=%s\n" "$n" \
+  "$(grep -c "phase-flow.sh\" start \$ARGUMENTS $n" commands/phase$n.md)" \
+  "$(grep -c "phase-flow.sh\" finish \$ARGUMENTS $n" commands/phase$n.md)"; done
+grep -l 'git push forgejo HEAD' commands/phase*.md || echo "no raw push remains (good)"
+grep -c 'pluginroot' commands/init.md
 ```
-Expected: every phase file has exactly one `start` and one `finish` call (7 and 7 total). Spot-check that phaseN.md uses `N` matching its filename with:
-```bash
-for n in 0 1 2 3 4 5 6; do grep -o "phase-flow.sh\" start \$ARGUMENTS $n" commands/phase$n.md; done
-```
-Expected: prints the matching `start $ARGUMENTS <n>` line for each n.
+Expected: each phase file reports `start=1 finish=1` with its own number; the raw-push grep prints "no raw push remains (good)"; init.md references `pluginroot` at least once.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add commands/phase0.md commands/phase1.md commands/phase2.md commands/phase3.md commands/phase4.md commands/phase5.md commands/phase6.md
-git commit -m "feat(phases): branch + open a PR per phase via phase-flow.sh"
+git add commands/phase0.md commands/phase1.md commands/phase2.md commands/phase3.md commands/phase4.md commands/phase5.md commands/phase6.md commands/init.md
+git commit -m "feat(phases): per-phase branch + PR via phase-flow.sh (start !-line, post-commit finish)"
 ```
 
 ---
