@@ -16,20 +16,27 @@ phase; update only the current phase's section.
   and which earlier phase must change; the human will rewind.
 - Touch only what the phase allows. No drive-by edits, no extra files, no new
   dependencies, no MCP servers. The sole sanctioned MCP surface is the Forgejo server used
-  by /seven-phase:review: it reads PR comments, may open the feature's PR and post one
-  summary reply, but never resolves threads, merges, closes, or advances a phase. That
-  server's write tools are coarse, so this restraint is a rule /seven-phase:review must
-  self-enforce, not a limit the tool whitelist can impose.
+  by /seven-phase:review: it reads the current phase's PR comments and posts one summary
+  reply, but never opens, merges, closes, resolves threads, or advances a phase - phases
+  open and squash-merge their own PRs via `phase-flow.sh`, not via MCP. That server's write
+  tools are coarse, so this restraint is a rule /seven-phase:review must self-enforce, not a
+  limit the tool whitelist can impose.
 - Each phase ends by committing its own work:
-  `git add -A && git commit -m "phaseN(<feature>): <summary>"`, then, if a `forgejo`
-  remote exists, `git push forgejo HEAD` so the open PR reflects this phase.
-  Phase 4 commits only its report.
+  `git add -A && git commit -m "phaseN(<feature>): <summary>"`. Phase 4 commits only its
+  report.
+- With Forgejo configured, each phase runs on its own branch `feat/<feature>-p<N>` off the
+  integration branch `feat/<feature>`, and opens ONE PR per phase (phases 0,1,2,3,5,6; phase 4
+  is a throwaway with no PR). Invoking the next phase squash-merges the previous phase's PR into
+  `feat/<feature>` (scripted, via Forgejo's API - not an MCP tool). All of this is `phase-flow.sh`,
+  which is inert without Forgejo, so the original commit-only flow still applies otherwise.
 - Validate with the command in `.llm/validation` (set once per repo via
   /seven-phase:init). Never weaken tests or invariants to make validation pass.
-- Human review lives on the feature's Forgejo PR (one PR per `feat/<feature>` branch,
-  open across every code-writing phase). Consume PR comments ONLY via
-  /seven-phase:review, which addresses them within the current phase and NEVER advances a
-  phase. Reading a comment is not permission to self-advance.
+- Human review happens on the CURRENT phase's PR. Consume its comments ONLY via
+  /seven-phase:review, which addresses them within the current phase and NEVER merges, opens,
+  closes, or advances. Reading a comment is not permission to self-advance.
+- The plugin only ever pushes the `forgejo` remote. `origin` is OFF-LIMITS: the final squash of
+  `feat/<feature>` to your real `main` and the push to `origin` are MANUAL steps you run by hand
+  (see /seven-phase:finish, which does the Forgejo-side merge and prints the origin step).
 - Be terse. No preamble. Show diffs, not essays.
 
 ## Phase contract

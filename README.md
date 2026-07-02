@@ -73,21 +73,23 @@ fix it, and continue forward.
 Review each phase on a Forgejo PR instead of only the inline VS Code diff, and let Claude
 pull your comments back in before you advance.
 
-One PR per feature branch (`feat/<f>`), open across every code-writing phase. Each phase
-commits and - if a `forgejo` remote exists - pushes, so the PR always reflects the latest
-phase. You leave line comments per phase; `/seven-phase:review <f>` reads them (via the
-MCP server) and addresses them **within the current phase**, then commits and pushes. On
-Forgejo it does only two writes: it opens the feature's PR if one isn't open yet, and
-posts a single summary comment ("Addressed X in `<sha>`, deferred Y"). It never resolves
-threads, merges, or advances a phase - you do that by hand. A comment asking for
-out-of-phase work is reported as a rewind signal, not acted on.
+Each phase gets its own branch `feat/<f>-p<N>` off the integration branch `feat/<f>`, and its
+own PR into `feat/<f>` - not one PR per feature. Invoking the next phase squash-merges the
+previous phase's PR into `feat/<f>` (scripted against Forgejo's API, not an MCP tool) and cuts
+the next phase branch. You leave line comments on the CURRENT phase's PR; `/seven-phase:review
+<f>` reads them (via the MCP server) and addresses them **within the current phase**, then
+commits and pushes `feat/<f>-p<N>`. On Forgejo it makes only one write: a single summary
+comment ("Addressed X in `<sha>`, deferred Y"). It never opens, merges, closes, resolves a
+thread, or advances a phase - phases open and merge their own PRs; you do the rest by hand. A
+comment asking for out-of-phase work is reported as a rewind signal, not acted on.
 
 > **Guardrail note.** `gitea-mcp` (v1.3.0) exposes coarse, mode-based write tools -
-> `pull_request_write` also merges/closes/reopens and `issue_write` also closes/edits - so
-> the `allowed-tools` whitelist *cannot* isolate "open PR" / "comment" from merge/close.
-> The "never merge/close/advance" rule is enforced by the `review.md` prompt, which
-> restricts Claude to `method:"create"` (open PR) and `method:"add_comment"` (reply) only -
-> not by the permission layer. Keep claude-bot's token minimal and glance at its PR activity.
+> `issue_write` also closes/edits, so the `allowed-tools` whitelist alone can't stop a
+> comment call from also closing the issue. The "never merge/close/advance" rule is enforced
+> by the `review.md` prompt, which restricts Claude to `issue_write` with
+> `method:"add_comment"` only. Opening and squash-merging phase PRs is scripted directly
+> against Forgejo's REST API by `phase-flow.sh` - it is never exposed to the model as an MCP
+> tool at all. Keep claude-bot's token minimal and glance at its PR activity.
 
 Setup:
 
@@ -118,17 +120,21 @@ Setup:
        /seven-phase:init "go test ./..."     # creates the repo, adds you as admin
                                              # collaborator, wires the `forgejo` remote
 
-   Forgejo is a dev-cycle mirror: feature branches + PRs live there for review, but the
-   source of truth is `origin`. After phase 6, you merge to your main branch and push to
-   `origin` by hand.
+   Forgejo is a dev-cycle mirror: feature and phase branches + PRs live there for review, but
+   the source of truth is `origin` (see below for how the final merge to `origin` works).
 
-Then, per feature:
+Then, per feature (each phase = its own PR into the integration branch `feat/<f>`):
 
-       /seven-phase:phase1 <f>    # commits + pushes feat/<f>
-       /seven-phase:review <f>    # opens the PR if missing, then stops (no comments yet)
-       # ... review on Forgejo, leave line comments ...
-       /seven-phase:review <f>    # reads comments, fixes within phase 1, replies + pushes
-       /seven-phase:phase2 <f>    # you advance, by hand, when satisfied
+       /seven-phase:phase0 <f>   # creates feat/<f>, opens the phase-0 (plan) PR
+       /seven-phase:review <f>   # read/address that phase's PR comments (never merges)
+       /seven-phase:phase1 <f>   # merges the phase-0 PR into feat/<f>, opens the phase-1 PR
+       ...                       # repeat review/advance through phase 6 (phase 4 = throwaway, no PR)
+       /seven-phase:finish <f>   # merges the phase-6 PR on Forgejo, prints the manual origin step
+
+Forgejo is a dev-cycle mirror; the plugin never pushes `origin`. When `/seven-phase:finish`
+prints it, you run the final squash to your real main and push to `origin` yourself:
+
+       git checkout main && git merge --squash feat/<f> && git commit && git push origin main
 
 To use a Forgejo-native MCP server instead of `gitea-mcp`, keep the server key named
 `forgejo` and update the `command`/`args` plus the `mcp__forgejo__*` tool names in
