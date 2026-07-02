@@ -41,15 +41,24 @@ NAME="$(basename "$(git rev-parse --show-toplevel)")"
 BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 [ "$BRANCH" != "HEAD" ] || die "detached HEAD - checkout a branch first"
 
-# 5. Create repo if missing
-lcode="$(api GET "/repos/$OWNER/$NAME" | tail -1)"
+# 5. Create repo if missing. Also decide the DEFAULT_BRANCH we record: on create
+# it's the current branch (there's nothing else it could be); on exists it MUST
+# come from the repo itself, never from whatever branch this run happens to be
+# on, or a re-run from a feature branch would silently break the PR base.
+resp="$(api GET "/repos/$OWNER/$NAME")"; lcode="${resp##*$'\n'}"; lbody="${resp%$'\n'*}"
 if [ "$lcode" = "404" ]; then
+  case "$BRANCH" in
+    feat/*) die "current branch '$BRANCH' looks like a feature branch; run /seven-phase:init from your base branch so the PR base is correct" ;;
+  esac
   payload="$(printf '{"name":"%s","private":true,"auto_init":false,"default_branch":"%s"}' "$NAME" "$BRANCH")"
   cre="$(api POST /user/repos "$payload")"; ccode="${cre##*$'\n'}"
   [ "$ccode" = "201" ] || die "repo create failed ($ccode): ${cre%$'\n'*}"
   msg "created $OWNER/$NAME (private)"
+  DEFAULT_BRANCH="$BRANCH"
 elif [ "$lcode" = "200" ]; then
   msg "repo $OWNER/$NAME already exists"
+  DEFAULT_BRANCH="$(printf '%s' "$lbody" | grep -o '"default_branch":"[^"]*"' | head -1 | cut -d'"' -f4)"
+  [ -n "$DEFAULT_BRANCH" ] || DEFAULT_BRANCH="$BRANCH"
 else
   die "unexpected status checking repo ($lcode)"
 fi
@@ -80,8 +89,8 @@ git config "credential.$HOST.helper" '!f() { echo "password=${FORGEJO_TOKEN}"; }
 
 # 9. Seed base branch so PRs have a base
 if git rev-parse HEAD >/dev/null 2>&1; then
-  if git push forgejo "$BRANCH"; then msg "seeded base branch '$BRANCH'"
-  else msg "WARNING: could not push base branch '$BRANCH'"; fi
+  if git push forgejo "$DEFAULT_BRANCH"; then msg "seeded base branch '$DEFAULT_BRANCH'"
+  else msg "WARNING: could not push base branch '$DEFAULT_BRANCH'"; fi
 else
   msg "no commits yet - skipping base-branch push"
 fi
@@ -89,6 +98,6 @@ fi
 # 10. Record config (no secrets)
 mkdir -p .llm || die "could not create .llm directory"
 printf 'owner=%s\nrepo=%s\ndefault_branch=%s\nreviewer=%s\n' \
-  "$OWNER" "$NAME" "$BRANCH" "${FORGEJO_REVIEWER:-}" > .llm/forgejo \
+  "$OWNER" "$NAME" "$DEFAULT_BRANCH" "${FORGEJO_REVIEWER:-}" > .llm/forgejo \
   || die "could not write .llm/forgejo"
 msg "wrote .llm/forgejo"

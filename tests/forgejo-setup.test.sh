@@ -61,5 +61,20 @@ rm -rf "$WORK2"
 echo '--- idempotency: second run must not error ---'
 FORGEJO_REVIEWER="$FORGEJO_REVIEWER" bash "$SCRIPT"; check "second run exit 0" "[ \$? -eq 0 ]"
 
+echo '--- exists path must record the REPO default_branch, not whatever branch this run is on ---'
+git checkout -q -b throwaway
+FORGEJO_REVIEWER="$FORGEJO_REVIEWER" bash "$SCRIPT"; check "third run (from throwaway) exit 0" "[ \$? -eq 0 ]"
+check "default_branch unchanged after run from throwaway" "grep -q '^default_branch=main$' .llm/forgejo"
+
+echo '--- feature-branch guard: fresh repo whose only branch is feat/x must be rejected ---'
+WORK3="$(mktemp -d)"
+( cd "$WORK3" && git init -q && git checkout -q -b feat/x \
+    && git -c user.email=t@t -c user.name=t commit -q --allow-empty -m "init" \
+    && FORGEJO_REVIEWER="$FORGEJO_REVIEWER" bash "$SCRIPT" )
+guard_rc=$?
+check "feature-branch guard exits non-zero" "[ $guard_rc -ne 0 ]"
+check "feature-branch guard writes no .llm/forgejo" "[ ! -e \"$WORK3/.llm/forgejo\" ]"
+rm -rf "$WORK3"
+
 [ "$FAILED" -eq 0 ] && echo "ALL PASS" || echo "SOME FAILED"
 exit "$FAILED"
