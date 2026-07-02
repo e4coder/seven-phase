@@ -93,6 +93,10 @@ comment asking for out-of-phase work is reported as a rewind signal, not acted o
 
 Setup:
 
+> **Server prerequisite.** The Forgejo instance's `git` system user needs a git identity
+> configured (`git config --global user.name`/`user.email` as that user on the server) -
+> without it, squash-merges return 500 and the per-phase flow dies at the first phase advance.
+
 1. Install the MCP server. The plugin bundles a `forgejo` server that runs the official
    `gitea-mcp` binary (it speaks Forgejo's API). Put `gitea-mcp` on your PATH, or swap
    `mcpServers.forgejo.command`/`args` in `.claude-plugin/plugin.json` for a
