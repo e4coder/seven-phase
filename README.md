@@ -104,8 +104,15 @@ Setup:
        export FORGEJO_TOKEN=<bot token: repo + issue write + write:user>
        export FORGEJO_REVIEWER=<your Forgejo username>   # added as admin collaborator
 
-   Unset vars degrade gracefully (the server just can't connect until you set them), so
-   the plugin never breaks a session for non-Forgejo users.
+   Unset vars degrade gracefully in `forgejo-setup.sh` and the phase commands (they just
+   skip Forgejo provisioning/pushes). The `forgejo` MCP server itself is a separate,
+   non-fatal failure mode: if `gitea-mcp` isn't on your PATH or the vars aren't exported
+   where Claude Code starts, the server shows as unavailable in the session (Claude just
+   can't call `mcp__forgejo__*` tools) rather than crashing anything - but you do need the
+   `gitea-mcp` binary installed for it to work at all.
+
+   To disable Forgejo entirely, remove the `forgejo` entry from `mcpServers` in
+   `.claude-plugin/plugin.json`.
 3. Run init inside the repo. It provisions the Forgejo dev-cycle mirror for you:
 
        /seven-phase:init "go test ./..."     # creates the repo, adds you as admin

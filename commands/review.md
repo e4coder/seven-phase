@@ -1,7 +1,7 @@
 ---
 description: Open/refresh this feature's Forgejo PR, read its review comments, and address them within the current phase (opens the PR if missing and posts one summary reply; never merges, closes, resolves, or advances a phase)
 argument-hint: [feature-slug]
-allowed-tools: Read, Edit, Grep, Glob, Bash, mcp__forgejo__list_pull_requests, mcp__forgejo__pull_request_read, mcp__forgejo__issue_read, mcp__forgejo__search_issues, mcp__forgejo__get_me, mcp__forgejo__pull_request_write, mcp__forgejo__issue_write
+allowed-tools: Read, Edit, Grep, Glob, Bash, mcp__forgejo__list_pull_requests, mcp__forgejo__pull_request_read, mcp__forgejo__issue_read, mcp__forgejo__pull_request_write, mcp__forgejo__issue_write
 model: claude-opus-4-8
 disable-model-invocation: true
 ---
