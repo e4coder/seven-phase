@@ -16,6 +16,7 @@ CMD="${1:-}"; FEATURE="${2:-}"; N="${3:-}"
 if ! git remote get-url forgejo >/dev/null 2>&1 || [ -z "${FORGEJO_HOST:-}" ] || [ -z "${FORGEJO_TOKEN:-}" ] || [ ! -f .llm/forgejo ]; then
   msg "Forgejo not configured - skipping PR plumbing (original flow applies)."; exit 0
 fi
+command -v python3 >/dev/null || die "python3 is required"
 
 HOST="${FORGEJO_HOST%/}"; API="$HOST/api/v1"
 OWNER="$(grep -E '^owner='          .llm/forgejo | cut -d= -f2)"
@@ -37,12 +38,14 @@ api(){ # api METHOD PATH [JSON] -> body then final line = HTTP status; token via
 
 open_phase_pr(){ # prints the open phase PR number for this feature, or empty
   api GET "/repos/$OWNER/$REPO/pulls?state=open&limit=50" | sed '$d' | python3 -c "
-import json,sys
+import json,re,sys
 feat=sys.argv[1]
+pat=re.compile(r'^feat/' + re.escape(feat) + r'-p[0-9]+\$')
 try: prs=json.load(sys.stdin)
 except Exception: prs=[]
 for pr in prs if isinstance(prs,list) else []:
-    if ((pr.get('head') or {}).get('ref','')).startswith(f'feat/{feat}-p'):
+    ref=(pr.get('head') or {}).get('ref','')
+    if pat.match(ref):
         print(pr['number']); break
 " "$FEATURE"
 }
@@ -67,6 +70,7 @@ sync_integration(){ # merge the open phase PR (if any) then fast-forward local I
 case "$CMD" in
   start)
     [ -n "$N" ] || die "start needs <N>"
+    grep -qxF '.llm/.pluginroot' .gitignore 2>/dev/null || echo '.llm/.pluginroot' >> .gitignore
     if [ "$N" = "0" ]; then
       git show-ref --verify --quiet "refs/heads/$INT" || git branch "$INT" "$BASE" || die "cannot create $INT"
       git checkout "$INT" || die "cannot checkout $INT"
@@ -89,7 +93,16 @@ case "$CMD" in
       msg "phase 4 opens no PR - pushing $INT"; git push forgejo "$INT" >/dev/null 2>&1 || msg "WARNING: push $INT failed"; exit 0
     fi
     git push -u forgejo "$PB" >/dev/null 2>&1 || die "could not push $PB"
-    local_body="$(printf '{"head":"%s","base":"%s","title":"phase %s: %s","body":"Opened by /seven-phase:phase%s. Review this phase in isolation."}' "$PB" "$INT" "$N" "$FEATURE" "$N")"
+    local_body="$(python3 -c '
+import json, sys
+pb, base, n, feat = sys.argv[1:5]
+print(json.dumps({
+    "head": pb,
+    "base": base,
+    "title": f"phase {n}: {feat}",
+    "body": f"Opened by /seven-phase:phase{n}. Review this phase in isolation.",
+}))
+' "$PB" "$INT" "$N" "$FEATURE")"
     code="$(api POST "/repos/$OWNER/$REPO/pulls" "$local_body" | tail -1)"
     case "$code" in
       201) msg "opened PR $PB -> $INT" ;;
