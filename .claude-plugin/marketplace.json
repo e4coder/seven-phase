@@ -1,0 +1,11 @@
+{
+  "name": "nomi-tools",
+  "owner": { "name": "Nomi" },
+  "plugins": [
+    {
+      "name": "seven-phase",
+      "source": "./",
+      "description": "Human-gated 7-phase LLM programming pipeline."
+    }
+  ]
+}
