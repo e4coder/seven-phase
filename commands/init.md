@@ -12,13 +12,13 @@ Set up this repository for the 7-phase workflow.
    If $ARGUMENTS is empty, write `echo "EDIT .llm/validation - set your test/build command"` and tell me to edit it.
 3. Ensure `.gitignore` contains the line `.llm/.phase` (append if missing; create .gitignore if absent). This keeps the phase marker out of git.
 4. Show me the contents of `.llm/validation` and confirm `.gitignore` was updated.
-5. Forgejo review loop (optional). If a git remote named `forgejo` exists
-   (`git remote get-url forgejo`), parse `<owner>/<repo>` from its URL and write
-   `.llm/forgejo` as two lines: `owner=<owner>` and `repo=<repo>`. If there is no
-   `forgejo` remote, write `.llm/forgejo` with blank `owner=` / `repo=` and tell me to
-   run `git remote add forgejo <url>` then re-run init. This file is committed and holds
-   NO secrets - it only tells /seven-phase:review which repo to read PR comments from.
-   The host and the read-only token live in the FORGEJO_HOST / FORGEJO_TOKEN environment
-   variables, never in the repo.
+5. Provision Forgejo (optional). Run the setup script, which is inert if
+   `FORGEJO_HOST`/`FORGEJO_TOKEN` are unset:
+   !`bash "${CLAUDE_PLUGIN_ROOT}/scripts/forgejo-setup.sh"`
+   It creates the private dev-cycle repo under the token's account (if missing),
+   adds `FORGEJO_REVIEWER` as an admin collaborator, wires the `forgejo` remote
+   (leaving `origin` untouched), seeds the base branch, and writes `.llm/forgejo`
+   (`owner`, `repo`, `default_branch`, `reviewer`). Report what it printed. The host,
+   token, and reviewer come from the environment, never the repo.
 
-Create only `.llm/validation` and `.llm/forgejo`.
+Do not create files beyond `.llm/validation`, `.llm/forgejo`, the `.gitignore` entry, and what the setup script manages.
