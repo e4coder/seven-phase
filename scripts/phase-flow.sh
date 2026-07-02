@@ -70,7 +70,10 @@ sync_integration(){ # merge the open phase PR (if any) then fast-forward local I
 case "$CMD" in
   start)
     [ -n "$N" ] || die "start needs <N>"
-    grep -qxF '.llm/.pluginroot' .gitignore 2>/dev/null || echo '.llm/.pluginroot' >> .gitignore
+    if ! grep -qxF '.llm/.pluginroot' .gitignore 2>/dev/null; then
+      if [ -s .gitignore ] && [ -n "$(tail -c1 .gitignore 2>/dev/null)" ]; then printf '\n' >> .gitignore; fi
+      printf '%s\n' '.llm/.pluginroot' >> .gitignore
+    fi
     if [ "$N" = "0" ]; then
       git show-ref --verify --quiet "refs/heads/$INT" || git branch "$INT" "$BASE" || die "cannot create $INT"
       git checkout "$INT" || die "cannot checkout $INT"
