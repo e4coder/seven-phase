@@ -17,12 +17,16 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "not inside a git rep
 
 HOST="${FORGEJO_HOST%/}"; API="$HOST/api/v1"
 api() { # api METHOD PATH [JSON] -> prints body then a final line with HTTP status
+  # Auth header is fed via a curl config on stdin (-K -) so the token never
+  # appears in argv / ps / /proc/<pid>/cmdline.
   local m="$1" p="$2" d="${3:-}"
   if [ -n "$d" ]; then
-    curl -sS -X "$m" -H "Authorization: token $FORGEJO_TOKEN" -H "Content-Type: application/json" \
-      -w '\n%{http_code}' -d "$d" "$API$p"
+    printf 'header = "Authorization: token %s"\n' "$FORGEJO_TOKEN" \
+      | curl -sS -K - -X "$m" -H "Content-Type: application/json" \
+        -w '\n%{http_code}' -d "$d" "$API$p"
   else
-    curl -sS -X "$m" -H "Authorization: token $FORGEJO_TOKEN" -w '\n%{http_code}' "$API$p"
+    printf 'header = "Authorization: token %s"\n' "$FORGEJO_TOKEN" \
+      | curl -sS -K - -X "$m" -w '\n%{http_code}' "$API$p"
   fi
 }
 
@@ -66,7 +70,8 @@ fi
 if git remote get-url forgejo >/dev/null 2>&1; then
   msg "remote forgejo already set"
 else
-  git remote add forgejo "$HOST/$OWNER/$NAME.git"; msg "added remote forgejo"
+  git remote add forgejo "$HOST/$OWNER/$NAME.git" || die "could not add remote forgejo"
+  msg "added remote forgejo"
 fi
 
 # 8. Non-interactive push auth (token read from env at push time, not stored)
@@ -82,7 +87,8 @@ else
 fi
 
 # 10. Record config (no secrets)
-mkdir -p .llm
+mkdir -p .llm || die "could not create .llm directory"
 printf 'owner=%s\nrepo=%s\ndefault_branch=%s\nreviewer=%s\n' \
-  "$OWNER" "$NAME" "$BRANCH" "${FORGEJO_REVIEWER:-}" > .llm/forgejo
+  "$OWNER" "$NAME" "$BRANCH" "${FORGEJO_REVIEWER:-}" > .llm/forgejo \
+  || die "could not write .llm/forgejo"
 msg "wrote .llm/forgejo"
