@@ -1,6 +1,6 @@
 {
   "name": "seven-phase",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Human-gated 7-phase LLM programming pipeline: structs -> interfaces -> todos -> dry-run -> invariants -> implement.",
   "author": { "name": "Nomi" },
   "repository": "https://github.com/e4coder/seven-phase",
