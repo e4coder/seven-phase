@@ -26,6 +26,6 @@ Phase 4 - DRY RUN (throwaway):
 5. Throw the implementation away (safe because the tree was clean at entry):
    `git stash -u || true` then `git stash drop || true`.
 6. Append the contents of `/tmp/phase4-$ARGUMENTS.md` under `## Phase 4` in `.llm/$ARGUMENTS/plan.md`.
-7. Commit only the report: `git add .llm/$ARGUMENTS/plan.md && git commit -m "phase4($ARGUMENTS): dry-run report"`.
+7. Commit only the report: `git add .llm/$ARGUMENTS/plan.md && git commit -m "phase4($ARGUMENTS): dry-run report"`; then, if a `forgejo` remote exists, `git push forgejo HEAD`.
 
 STOP. If the report shows the structs/interfaces/TODOs were insufficient, I will rewind to the relevant phase before Phase 5.

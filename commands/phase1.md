@@ -15,6 +15,6 @@ Phase 1 - STRUCTS ONLY:
 1. Add/modify the data structures named in the plan. Types, fields, enums only.
 2. No function bodies, no logic, no signatures beyond what a type needs.
 3. Record the final structures under `## Phase 1` in the plan.
-4. Commit: `git add -A && git commit -m "phase1($ARGUMENTS): data structures"`.
+4. Commit: `git add -A && git commit -m "phase1($ARGUMENTS): data structures"`; then, if a `forgejo` remote exists, `git push forgejo HEAD`.
 
 STOP and wait for review. Do not start Phase 2.

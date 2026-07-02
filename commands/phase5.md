@@ -15,6 +15,6 @@ Phase 5 - INVARIANTS ONLY:
 1. Add assertions / invariant checks that must always hold for this feature (preconditions, postconditions, state invariants). Use the project's assertion mechanism.
 2. Each invariant must be narrow and verifiable. No feature logic, no control flow beyond the checks.
 3. List each invariant and where it is enforced under `## Phase 5` in the plan.
-4. Commit: `git add -A && git commit -m "phase5($ARGUMENTS): invariants"`.
+4. Commit: `git add -A && git commit -m "phase5($ARGUMENTS): invariants"`; then, if a `forgejo` remote exists, `git push forgejo HEAD`.
 
 STOP and wait for review. Do not start Phase 6.

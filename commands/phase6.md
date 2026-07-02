@@ -18,6 +18,6 @@ Phase 6 - IMPLEMENT FOR REAL:
    !`cat .llm/validation 2>/dev/null || echo "MISSING - run /seven-phase:init"`
    Do NOT weaken tests or invariants to pass. If you cannot satisfy them, STOP and report.
 4. Record an implementation summary under `## Phase 6` in the plan.
-5. Commit: `git add -A && git commit -m "phase6($ARGUMENTS): implementation"`.
+5. Commit: `git add -A && git commit -m "phase6($ARGUMENTS): implementation"`; then, if a `forgejo` remote exists, `git push forgejo HEAD`.
 
 STOP. The feature is ready for my final review / PR.
