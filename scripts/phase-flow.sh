@@ -98,9 +98,11 @@ case "$CMD" in
     esac
     ;;
   merge-final)
-    num="$(open_phase_pr)"
-    if [ -n "$num" ]; then squash_merge "$num"; git fetch forgejo "$INT" >/dev/null 2>&1 || true
-    else msg "no open phase PR to merge"; fi
+    # Squash-merge the last open phase PR on Forgejo, then fast-forward LOCAL feat/<f>
+    # to match - identical to what sync_integration does for every other phase advance.
+    # Without this, /finish's printed `git merge --squash feat/<f>` integrates the
+    # feature WITHOUT the final phase's work (it was only merged on Forgejo, not locally).
+    sync_integration
     ;;
   *) die "unknown command: $CMD" ;;
 esac

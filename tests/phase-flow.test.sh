@@ -51,5 +51,14 @@ check "only forgejo remote present" "[ \"\$(git remote)\" = forgejo ]"
 echo '--- idempotency: re-run phase 1 start must not error ---'
 bash "$FLOW" start "$F" 1 >/dev/null; check "re-run start exit 0" "[ $? -eq 0 ]"
 
+echo '--- merge-final: must fast-forward LOCAL feat/demo, not just merge on Forgejo ---'
+echo p1 >> work.txt; git add work.txt; git -c user.email=t@t -c user.name=t commit -q -m 'phase1(demo): work'
+bash "$FLOW" finish "$F" 1 >/dev/null
+P1="$(gbody "$API/repos/$OWNER/$NAME/pulls?state=open" | grep -o '"number":[0-9]*' | head -1 | cut -d: -f2)"
+check "phase 1 PR opened" "[ -n \"$P1\" ]"
+bash "$FLOW" merge-final "$F" >/dev/null
+check "phase 1 PR merged (now closed)" "[ \"\$(gbody $API/repos/$OWNER/$NAME/pulls/$P1 | grep -o '\"merged\":true')\" = '\"merged\":true' ]"
+check "local feat/demo fast-forwarded to include phase-1 work" "[ \"\$(git show feat/demo:work.txt | tail -1)\" = p1 ]"
+
 [ "$FAILED" -eq 0 ] && echo ALL PASS || echo SOME FAILED
 exit "$FAILED"
