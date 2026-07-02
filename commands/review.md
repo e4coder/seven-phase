@@ -1,7 +1,7 @@
 ---
-description: Open/refresh this feature's Forgejo PR, read its review comments, and address them within the current phase (opens the PR if missing and posts one summary reply; never merges, closes, resolves, or advances a phase)
+description: Read the current phase's Forgejo PR review comments and address them within the current phase (STOPs if no phase PR is open, and posts one summary reply; never opens, merges, closes, resolves, or advances a phase)
 argument-hint: [feature-slug]
-allowed-tools: Read, Edit, Grep, Glob, Bash, mcp__forgejo__list_pull_requests, mcp__forgejo__pull_request_read, mcp__forgejo__issue_read, mcp__forgejo__pull_request_write, mcp__forgejo__issue_write
+allowed-tools: Read, Edit, Grep, Glob, Bash, mcp__forgejo__list_pull_requests, mcp__forgejo__pull_request_read, mcp__forgejo__issue_read, mcp__forgejo__issue_write
 model: claude-opus-4-8
 disable-model-invocation: true
 ---
@@ -14,22 +14,21 @@ Forgejo target (read `owner=`, `repo=`, and `default_branch=` from here):
 Feature: **$ARGUMENTS**. Recent commits (derive the CURRENT phase from the latest `phaseN($ARGUMENTS)` subject):
 !`git log -8 --pretty=format:'%h %s'`
 
-You are opening/refreshing this feature's Forgejo PR and consuming my review feedback via the
-`forgejo` MCP server (gitea-mcp). Its write tools are COARSE: `pull_request_write` can also
-merge/close/reopen and `issue_write` can also close/edit - the tool whitelist CANNOT stop those,
-so the limit is on YOU. Use EXACTLY these two write actions and nothing else:
-  - `pull_request_write` with `method:"create"` ONLY  (to open the PR)
+You are reading the CURRENT phase's Forgejo PR and consuming my review feedback via the
+`forgejo` MCP server (gitea-mcp). Its write tools are COARSE: `issue_write` can also close/edit -
+the tool whitelist CANNOT stop that, so the limit is on YOU. Use EXACTLY this one write action
+and nothing else:
   - `issue_write` with `method:"add_comment"` ONLY     (to post one summary reply)
-NEVER call `pull_request_write` with method merge / close / reopen / update / update_branch /
-add_reviewers. NEVER call `issue_write` with method update / edit_comment / *label*. NEVER merge,
-close, resolve a thread, or advance a phase - I do all of that by hand.
+NEVER call `issue_write` with method update / edit_comment / *label*. NEVER open, merge, close,
+resolve a thread, or advance a phase - I do all of that by hand (phases open and merge their own
+PRs; /review only reads and comments).
 
-1. Push the branch so Forgejo has it: `git push forgejo HEAD` (branch = `feat/$ARGUMENTS`).
-2. Find the PR: `list_pull_requests` {owner, repo, state:"open"} and match the one whose head
-   branch is `feat/$ARGUMENTS`. If none exists, open it once:
-   `pull_request_write` {method:"create", owner, repo, base:<default_branch from .llm/forgejo>, head:"feat/$ARGUMENTS",
-   title + body drawn from `.llm/$ARGUMENTS/plan.md`}. Note the PR number. If you just opened it,
-   there is no feedback yet - report the PR number/URL and STOP.
+1. Push the branch so Forgejo has it: `git push forgejo HEAD` (current phase branch =
+   `feat/$ARGUMENTS-p<N>`).
+2. Find the CURRENT phase's PR: derive the current phase N from the latest `phaseN($ARGUMENTS)`
+   commit above, then `list_pull_requests` {owner, repo, state:"open"} and match the one whose
+   head branch is `feat/$ARGUMENTS-p<N>`. If none is open, STOP and tell me to run
+   `/seven-phase:phase<N>` first (phases open their own PR; /review never opens or merges one).
 3. Read every piece of feedback for that PR number (a PR's number == its issue number):
    - conversation comments: `issue_read` {method:"get_comments", owner, repo, issue_number:<n>}
    - reviews: `pull_request_read` {method:"get_reviews", owner, repo, pull_number:<n>}
