@@ -10,7 +10,7 @@ Set up this repository for the 7-phase workflow.
 2. Write `.llm/validation` containing exactly this command on one line (no extra quoting):
    $ARGUMENTS
    If $ARGUMENTS is empty, write `echo "EDIT .llm/validation - set your test/build command"` and tell me to edit it.
-3. Ensure `.gitignore` contains the line `.llm/.phase` (append if missing; create .gitignore if absent). This keeps the phase marker out of git.
+3. Ensure `.gitignore` contains the lines `.llm/.phase` and `.llm/.pluginroot` (append each only if missing; create .gitignore if absent). This keeps the phase marker and the machine-specific plugin-root path out of git.
 4. Show me the contents of `.llm/validation` and confirm `.gitignore` was updated.
 5. Provision Forgejo (optional). Run the setup script, which is inert if
    `FORGEJO_HOST`/`FORGEJO_TOKEN` are unset:

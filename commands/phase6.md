@@ -8,6 +8,7 @@ disable-model-invocation: true
 !`mkdir -p .llm && echo 6 > .llm/.phase`
 Rules (always follow):
 !`cat "${CLAUDE_PLUGIN_ROOT}/PROTOCOL.md"`
+!`mkdir -p .llm; echo "${CLAUDE_PLUGIN_ROOT}" > .llm/.pluginroot; bash "${CLAUDE_PLUGIN_ROOT}/scripts/phase-flow.sh" start $ARGUMENTS 6`
 
 Feature: **$ARGUMENTS**. Read `.llm/$ARGUMENTS/plan.md` end to end.
 
@@ -18,6 +19,6 @@ Phase 6 - IMPLEMENT FOR REAL:
    !`cat .llm/validation 2>/dev/null || echo "MISSING - run /seven-phase:init"`
    Do NOT weaken tests or invariants to pass. If you cannot satisfy them, STOP and report.
 4. Record an implementation summary under `## Phase 6` in the plan.
-5. Commit: `git add -A && git commit -m "phase6($ARGUMENTS): implementation"`; then, if a `forgejo` remote exists, `git push forgejo HEAD`.
+5. Commit: `git add -A && git commit -m "phase6($ARGUMENTS): implementation"`, then open/refresh this phase's PR by running `bash "$(cat .llm/.pluginroot)/scripts/phase-flow.sh" finish $ARGUMENTS 6`.
 
 STOP. The feature is ready for my final review / PR.
