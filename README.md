@@ -154,8 +154,10 @@ To use a Forgejo-native MCP server instead of `gitea-mcp`, keep the server key n
 - Stop (`scripts/phase_reset.sh`) clears the phase marker at the end of each turn, so the
   gate is only ever active during a live phase-0 turn.
 
-To disable the hooks, remove the `"hooks"` line from `.claude-plugin/plugin.json`, or
-install the plugin at project scope instead of user scope.
+`hooks/hooks.json` is loaded **automatically** by Claude Code — do NOT add a `hooks` key to
+`.claude-plugin/plugin.json` pointing at it, or the plugin fails to load with a
+"Duplicate hooks file detected" error. To disable the hooks, set `hooks/hooks.json` to `{}`
+(or remove the `gate.sh` / `phase_reset.sh` entries).
 
 > Plugins run with your privileges and their hooks execute on tool use. Review before
 > installing anyone else's.

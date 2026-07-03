@@ -6,7 +6,6 @@
   "repository": "https://github.com/e4coder/seven-phase",
   "license": "MIT",
   "commands": "./commands",
-  "hooks": "./hooks/hooks.json",
   "mcpServers": {
     "forgejo": {
       "command": "gitea-mcp",

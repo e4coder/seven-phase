@@ -1,7 +1,7 @@
 ---
 description: Read the current phase's Forgejo PR review comments and address them within the current phase (STOPs if no phase PR is open, and posts one summary reply; never opens, merges, closes, resolves, or advances a phase)
 argument-hint: [feature-slug]
-allowed-tools: Read, Edit, Grep, Glob, Bash, mcp__forgejo__list_pull_requests, mcp__forgejo__pull_request_read, mcp__forgejo__issue_read, mcp__forgejo__issue_write
+allowed-tools: Read, Edit, Grep, Glob, Bash, mcp__plugin_seven-phase_forgejo__list_pull_requests, mcp__plugin_seven-phase_forgejo__pull_request_read, mcp__plugin_seven-phase_forgejo__issue_read, mcp__plugin_seven-phase_forgejo__issue_write
 model: claude-opus-4-8
 disable-model-invocation: true
 ---
