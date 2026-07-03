@@ -36,6 +36,29 @@ api(){ # api METHOD PATH [JSON] -> body then final line = HTTP status; token via
   fi
 }
 
+# Fail-safe worktree guard. die ONLY when <branch> is positively confirmed checked
+# out in a worktree whose realpath differs from the current one. Any ambiguity or
+# parse failure -> return 0 (let the subsequent git checkout run exactly as before,
+# so this can never be worse than today's behavior).
+assert_branch_free(){ # assert_branch_free <branch>
+  local branch="$1" here other
+  here="$(git rev-parse --show-toplevel 2>/dev/null)" || return 0
+  other="$(git worktree list --porcelain 2>/dev/null | python3 -c '
+import os, sys
+here = os.path.realpath(sys.argv[1]); want = "refs/heads/" + sys.argv[2]
+path = None
+for line in sys.stdin:
+    line = line.rstrip("\n")
+    if line.startswith("worktree "):
+        path = line[9:]
+    elif line.startswith("branch ") and line[7:] == want:
+        if path and os.path.realpath(path) != here:
+            print(path); break
+' "$here" "$branch" 2>/dev/null)" || return 0
+  [ -n "$other" ] && die "feature '$FEATURE' (branch $branch) is checked out at $other - run this command from there"
+  return 0
+}
+
 open_phase_pr(){ # prints the open phase PR number for this feature, or empty
   api GET "/repos/$OWNER/$REPO/pulls?state=open&limit=50" | sed '$d' | python3 -c "
 import json,re,sys
@@ -50,6 +73,17 @@ for pr in prs if isinstance(prs,list) else []:
 " "$FEATURE"
 }
 
+post_pr_comment(){ # post_pr_comment <pr-number> <file>
+  local num="$1" file="$2" body
+  body="$(python3 -c 'import json,sys; print(json.dumps({"body": open(sys.argv[1], encoding="utf-8").read()}))' "$file" 2>/dev/null)" \
+    || { msg "WARNING: could not read digest $file - skipping comment"; return 0; }
+  local code; code="$(api POST "/repos/$OWNER/$REPO/issues/$num/comments" "$body" | tail -1)"
+  case "$code" in
+    201) msg "posted attention digest to PR #$num" ;;
+    *)   msg "WARNING: could not post attention digest (status $code)" ;;
+  esac
+}
+
 squash_merge(){ # squash_merge <number>
   local code; code="$(api POST "/repos/$OWNER/$REPO/pulls/$1/merge" '{"Do":"squash"}' | tail -1)"
   case "$code" in
@@ -60,6 +94,7 @@ squash_merge(){ # squash_merge <number>
 }
 
 sync_integration(){ # merge the open phase PR (if any) then fast-forward local INT to forgejo
+  assert_branch_free "$INT"
   local num; num="$(open_phase_pr)"
   if [ -n "$num" ]; then squash_merge "$num"; else msg "no open phase PR to merge"; fi
   git checkout "$INT" 2>/dev/null || die "local $INT missing - run phase 0 first"
@@ -81,6 +116,7 @@ case "$CMD" in
       printf '%s\n' '.llm/.pluginroot' >> .gitignore
     fi
     if [ "$N" = "0" ]; then
+      assert_branch_free "$INT"
       git show-ref --verify --quiet "refs/heads/$INT" || git branch "$INT" "$BASE" || die "cannot create $INT"
       git checkout "$INT" || die "cannot checkout $INT"
       git push -u forgejo "$INT" >/dev/null 2>&1 || msg "WARNING: could not push $INT"
@@ -91,6 +127,7 @@ case "$CMD" in
     if [ "$N" = "4" ]; then
       msg "phase 4: staying on $INT (throwaway dry-run, no phase branch, no PR)"
     else
+      assert_branch_free "$PB"
       git show-ref --verify --quiet "refs/heads/$PB" && git branch -D "$PB" >/dev/null 2>&1
       git checkout -b "$PB" "$INT" || die "cannot create $PB"
       msg "on phase branch $PB"
@@ -112,12 +149,16 @@ print(json.dumps({
     "body": f"Opened by /seven-phase:phase{n}. Review this phase in isolation.",
 }))
 ' "$PB" "$INT" "$N" "$FEATURE")"
-    code="$(api POST "/repos/$OWNER/$REPO/pulls" "$local_body" | tail -1)"
+    DIGEST="${4:-}"
+    resp="$(api POST "/repos/$OWNER/$REPO/pulls" "$local_body")"
+    code="$(printf '%s' "$resp" | tail -1)"; num=""
     case "$code" in
-      201) msg "opened PR $PB -> $INT" ;;
-      409) msg "PR for $PB already open (updated by push)" ;;
-      *) msg "WARNING: could not open PR (status $code)" ;;
+      201) msg "opened PR $PB -> $INT"
+           num="$(printf '%s' "$resp" | sed '$d' | python3 -c 'import json,sys; print(json.load(sys.stdin).get("number",""))' 2>/dev/null)" ;;
+      409) msg "PR for $PB already open (updated by push)"; num="$(open_phase_pr)" ;;
+      *)   msg "WARNING: could not open PR (status $code)" ;;
     esac
+    if [ -n "$DIGEST" ] && [ -s "$DIGEST" ] && [ -n "$num" ]; then post_pr_comment "$num" "$DIGEST"; fi
     ;;
   merge-final)
     # Squash-merge the last open phase PR on Forgejo, then fast-forward LOCAL feat/<f>
@@ -136,6 +177,7 @@ print(json.dumps({
     [ "$N" -lt "$cur" ] || die "cannot rewind to phase $N; current phase is ~$cur (must go backward)"
     anchor="seven-phase/$FEATURE/phase$((N-1))"
     git rev-parse -q --verify "refs/tags/$anchor" >/dev/null || die "anchor tag $anchor missing - refusing to reset to a guessed point"
+    assert_branch_free "$INT"
     git checkout "$INT" 2>/dev/null || die "local $INT missing"
     git reset --hard "$anchor" || die "reset $INT to $anchor failed"
     git push --force-with-lease forgejo "$INT" || die "force-push $INT to forgejo failed"

@@ -53,9 +53,11 @@ bash "$FLOW" start "$F" 1 >/dev/null; check "re-run start exit 0" "[ $? -eq 0 ]"
 
 echo '--- merge-final: must fast-forward LOCAL feat/demo, not just merge on Forgejo ---'
 echo p1 >> work.txt; git add work.txt; git -c user.email=t@t -c user.name=t commit -q -m 'phase1(demo): work'
-bash "$FLOW" finish "$F" 1 >/dev/null
+printf '### \342\232\240\357\270\217 Needs your attention\n- confirm the Ledger struct shape\n\n### What this phase did\n- added structs\n' > "$WORK/digest1.md"
+bash "$FLOW" finish "$F" 1 "$WORK/digest1.md" >/dev/null
 P1="$(gbody "$API/repos/$OWNER/$NAME/pulls?state=open" | grep -o '"number":[0-9]*' | head -1 | cut -d: -f2)"
 check "phase 1 PR opened" "[ -n \"$P1\" ]"
+check "attention digest posted as a comment on the phase-1 PR" "gbody \"$API/repos/$OWNER/$NAME/issues/$P1/comments\" | grep -q 'Needs your attention'"
 bash "$FLOW" merge-final "$F" >/dev/null
 check "phase 1 PR merged (now closed)" "[ \"\$(gbody $API/repos/$OWNER/$NAME/pulls/$P1 | grep -o '\"merged\":true')\" = '\"merged\":true' ]"
 check "local feat/demo fast-forwarded to include phase-1 work" "[ \"\$(git show feat/demo:work.txt | tail -1)\" = p1 ]"
@@ -118,6 +120,15 @@ check "phase5 tag deleted"               "! git rev-parse -q --verify refs/tags/
 check "phase4 anchor tag still exists"   "git rev-parse -q --verify refs/tags/seven-phase/demo/phase4 >/dev/null"
 check "feat/demo-p6 branch deleted"      "! git rev-parse -q --verify refs/heads/feat/demo-p6 >/dev/null"
 check "rewind-to-5 never created origin" "! git remote get-url origin >/dev/null 2>&1"
+
+echo '--- worktree guard: a feature branch checked out elsewhere blocks in-place ops ---'
+git checkout -q main
+WT="$(mktemp -d)"; git worktree add -q "$WT" feat/demo
+guard_out="$(bash "$FLOW" start demo 7 2>&1)"; guard_rc=$?
+check "guard blocks start when feat/demo lives in another worktree" "[ $guard_rc -ne 0 ]"
+check "guard names the other worktree path" "printf '%s' \"\$guard_out\" | grep -q 'checked out at'"
+git worktree remove --force "$WT" 2>/dev/null; rm -rf "$WT"
+git checkout -q feat/demo
 
 [ "$FAILED" -eq 0 ] && echo ALL PASS || echo SOME FAILED
 exit "$FAILED"
