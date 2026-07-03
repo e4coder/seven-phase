@@ -65,8 +65,12 @@ sync_integration(){ # merge the open phase PR (if any) then fast-forward local I
   git checkout "$INT" 2>/dev/null || die "local $INT missing - run phase 0 first"
   git fetch forgejo "$INT" >/dev/null 2>&1 || die "fetch forgejo/$INT failed"
   git merge --ff-only "forgejo/$INT" >/dev/null 2>&1 || die "local $INT diverged from forgejo/$INT - resolve by hand"
-  git tag -f "seven-phase/$FEATURE/phase$((N-1))" >/dev/null 2>&1
-  git push -f forgejo "seven-phase/$FEATURE/phase$((N-1))" >/dev/null 2>&1 || msg "WARNING: could not push anchor tag phase$((N-1))"
+  # Anchor the just-merged phase (N-1) - but only for a real phase advance.
+  # merge-final calls this with $N unset; skip so we never tag a bogus phase-1.
+  if printf '%s' "${N:-}" | grep -qE '^[0-9]+$' && [ "$N" -ge 1 ]; then
+    git tag -f "seven-phase/$FEATURE/phase$((N-1))" >/dev/null 2>&1
+    git push -f forgejo "seven-phase/$FEATURE/phase$((N-1))" >/dev/null 2>&1 || msg "WARNING: could not push anchor tag phase$((N-1))"
+  fi
 }
 
 case "$CMD" in

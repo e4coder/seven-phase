@@ -59,6 +59,8 @@ check "phase 1 PR opened" "[ -n \"$P1\" ]"
 bash "$FLOW" merge-final "$F" >/dev/null
 check "phase 1 PR merged (now closed)" "[ \"\$(gbody $API/repos/$OWNER/$NAME/pulls/$P1 | grep -o '\"merged\":true')\" = '\"merged\":true' ]"
 check "local feat/demo fast-forwarded to include phase-1 work" "[ \"\$(git show feat/demo:work.txt | tail -1)\" = p1 ]"
+# merge-final calls sync_integration with N unset; it must NOT tag a bogus phase-1.
+check "merge-final creates no stray phase tag" "! git tag -l 'seven-phase/demo/phase-*' | grep -q . && ! git rev-parse -q --verify refs/tags/seven-phase/demo/phase-1 >/dev/null"
 
 echo '--- rewind: build phases 0,1,2, start 3, then rewind to 2 ---'
 # phase 2 start: merge-final already absorbed phase1's PR into feat/demo above, so there's
