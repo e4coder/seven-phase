@@ -85,6 +85,13 @@ comment ("Addressed X in `<sha>`, deferred Y"). It never opens, merges, closes, 
 thread, or advances a phase - phases open and merge their own PRs; you do the rest by hand. A
 comment asking for out-of-phase work is reported as a rewind signal, not acted on.
 
+Each phase PR also gets a **review-first digest** comment when it opens - Claude's prioritized
+`⚠️ Needs your attention` list (decisions to confirm, risks, plan deviations, open questions)
+so you can focus on what matters before reading the diff. Run each feature from its own worktree
+(`git worktree add ../wt-<f> -b feat/<f> <base>`); `phase-flow.sh` refuses to operate on a feature
+whose branch is checked out in a different worktree and tells you where it lives, so parallel
+sessions and the main folder never interfere.
+
 > **Guardrail note.** `gitea-mcp` (v1.3.0) exposes coarse, mode-based write tools -
 > `issue_write` also closes/edits, so the `allowed-tools` whitelist alone can't stop a
 > comment call from also closing the issue. The "never merge/close/advance" rule is enforced

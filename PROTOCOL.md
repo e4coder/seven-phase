@@ -29,6 +29,12 @@ phase; update only the current phase's section.
   is a throwaway with no PR). Invoking the next phase squash-merges the previous phase's PR into
   `feat/<feature>` (scripted, via Forgejo's API - not an MCP tool). All of this is `phase-flow.sh`,
   which is inert without Forgejo, so the original commit-only flow still applies otherwise.
+- Run each feature from its own git worktree (`git worktree add ../wt-<feature> -b feat/<feature> <base>`)
+  so parallel sessions never collide; a session in the main folder is untouched. `phase-flow.sh`
+  refuses to run if a feature's branch is checked out in a different worktree, naming where it lives.
+- When a phase opens its PR, it attaches a review-first digest comment: a `### ⚠️ Needs your attention`
+  section first (decisions to confirm, risks, plan deviations, open questions) so you triage what
+  matters before reading the diff. Phase 4 opens no PR; its dry-run report serves the same purpose.
 - Validate with the command in `.llm/validation` (set once per repo via
   /seven-phase:init). Never weaken tests or invariants to make validation pass.
 - Human review happens on the CURRENT phase's PR. Consume its comments ONLY via
