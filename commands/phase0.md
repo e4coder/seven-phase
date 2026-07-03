@@ -19,6 +19,6 @@ Feature: **$ARGUMENTS**. Phase 0: research only, no code.
    - `## Phase 0 - Plan`: the concrete, file-level breakdown of how phases 1-6 will be executed for THIS feature - which structs, which interfaces, which call sites, what the dry-run will exercise, what invariants must hold.
    - Empty headers `## Phase 1` ... `## Phase 6`.
 3. No feature code, structs, or signatures yet - only the plan.
-4. Commit: `git add -A && git commit -m "phase0($ARGUMENTS): research + plan"`, then open/refresh this phase's PR by running `bash "$(cat .llm/.pluginroot)/scripts/phase-flow.sh" finish $ARGUMENTS 0`.
+4. Commit: `git add -A && git commit -m "phase0($ARGUMENTS): research + plan"`. Then write a concise review-first digest to `/tmp/seven-phase-digest-$ARGUMENTS-0.md`: a `### ⚠️ Needs your attention` section FIRST - decisions to confirm, risks/uncertainties, deviations from the plan, and open questions, most-important-first (or `Nothing flagged - routine phase.` when there is nothing) - then a brief `### What this phase did`. Open/refresh this phase's PR and attach the digest by running `bash "$(cat .llm/.pluginroot)/scripts/phase-flow.sh" finish $ARGUMENTS 0 /tmp/seven-phase-digest-$ARGUMENTS-0.md`.
 
 STOP and wait for my review. Do not start Phase 1.

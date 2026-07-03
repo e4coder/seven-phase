@@ -19,6 +19,6 @@ Phase 6 - IMPLEMENT FOR REAL:
    !`cat .llm/validation 2>/dev/null || echo "MISSING - run /seven-phase:init"`
    Do NOT weaken tests or invariants to pass. If you cannot satisfy them, STOP and report.
 4. Record an implementation summary under `## Phase 6` in the plan.
-5. Commit: `git add -A && git commit -m "phase6($ARGUMENTS): implementation"`, then open/refresh this phase's PR by running `bash "$(cat .llm/.pluginroot)/scripts/phase-flow.sh" finish $ARGUMENTS 6`.
+5. Commit: `git add -A && git commit -m "phase6($ARGUMENTS): implementation"`. Then write a concise review-first digest to `/tmp/seven-phase-digest-$ARGUMENTS-6.md`: a `### ⚠️ Needs your attention` section FIRST - decisions to confirm, risks/uncertainties, deviations from the plan, and open questions, most-important-first (or `Nothing flagged - routine phase.` when there is nothing) - then a brief `### What this phase did`. Open/refresh this phase's PR and attach the digest by running `bash "$(cat .llm/.pluginroot)/scripts/phase-flow.sh" finish $ARGUMENTS 6 /tmp/seven-phase-digest-$ARGUMENTS-6.md`.
 
 STOP. The feature is ready for my final review / PR.

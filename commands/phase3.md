@@ -16,6 +16,6 @@ Phase 3 - TODO MAP ONLY:
 1. At every location phase 6 will change, insert `// TODO($ARGUMENTS): <precise description>` (use the language's comment syntax).
 2. No real implementation - only TODO markers and the phase-2 stubs.
 3. List every TODO (file:line + text) under `## Phase 3` in the plan.
-4. Commit: `git add -A && git commit -m "phase3($ARGUMENTS): todo map"`, then open/refresh this phase's PR by running `bash "$(cat .llm/.pluginroot)/scripts/phase-flow.sh" finish $ARGUMENTS 3`.
+4. Commit: `git add -A && git commit -m "phase3($ARGUMENTS): todo map"`. Then write a concise review-first digest to `/tmp/seven-phase-digest-$ARGUMENTS-3.md`: a `### ⚠️ Needs your attention` section FIRST - decisions to confirm, risks/uncertainties, deviations from the plan, and open questions, most-important-first (or `Nothing flagged - routine phase.` when there is nothing) - then a brief `### What this phase did`. Open/refresh this phase's PR and attach the digest by running `bash "$(cat .llm/.pluginroot)/scripts/phase-flow.sh" finish $ARGUMENTS 3 /tmp/seven-phase-digest-$ARGUMENTS-3.md`.
 
 STOP and wait for review. Do not start Phase 4.
