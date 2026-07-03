@@ -60,5 +60,26 @@ bash "$FLOW" merge-final "$F" >/dev/null
 check "phase 1 PR merged (now closed)" "[ \"\$(gbody $API/repos/$OWNER/$NAME/pulls/$P1 | grep -o '\"merged\":true')\" = '\"merged\":true' ]"
 check "local feat/demo fast-forwarded to include phase-1 work" "[ \"\$(git show feat/demo:work.txt | tail -1)\" = p1 ]"
 
+echo '--- rewind: build phases 0,1,2, start 3, then rewind to 2 ---'
+# phase 2 start: merge-final already absorbed phase1's PR into feat/demo above, so there's
+# no open PR here - sync_integration just ff's (no-op) and tags phase1, then cuts feat/demo-p2.
+bash "$FLOW" start demo 2 >/dev/null
+# phase 2: commit real work on the current phase branch, open its PR
+echo p2 >> work.txt && git add work.txt && git -c user.email=t@t -c user.name=t commit -q -m "phase2(demo): interfaces"
+bash "$FLOW" finish demo 2 >/dev/null
+# phase 3 start: merges p2 into feat/demo (creating the phase2 tag) and cuts feat/demo-p3
+bash "$FLOW" start demo 3 >/dev/null
+check "phase2 anchor tag exists"        "git rev-parse -q --verify refs/tags/seven-phase/demo/phase2 >/dev/null"
+check "phase1 anchor tag exists"        "git rev-parse -q --verify refs/tags/seven-phase/demo/phase1 >/dev/null"
+P1_TIP="$(git rev-parse seven-phase/demo/phase1)"
+# rewind to phase 2 (redo interfaces): reset feat/demo to phase1 anchor
+bash "$FLOW" rewind demo 2 >/dev/null
+git checkout -q feat/demo
+check "feat/demo reset to phase1 anchor" "[ \"\$(git rev-parse feat/demo)\" = \"$P1_TIP\" ]"
+check "phase-2 work gone from feat/demo" "! git show feat/demo:work.txt | grep -qx p2"
+check "phase2 tag deleted"               "! git rev-parse -q --verify refs/tags/seven-phase/demo/phase2 >/dev/null"
+check "feat/demo-p3 branch deleted"      "! git rev-parse -q --verify refs/heads/feat/demo-p3 >/dev/null"
+check "rewind never created origin"      "! git remote get-url origin >/dev/null 2>&1"
+
 [ "$FAILED" -eq 0 ] && echo ALL PASS || echo SOME FAILED
 exit "$FAILED"

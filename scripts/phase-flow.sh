@@ -65,6 +65,8 @@ sync_integration(){ # merge the open phase PR (if any) then fast-forward local I
   git checkout "$INT" 2>/dev/null || die "local $INT missing - run phase 0 first"
   git fetch forgejo "$INT" >/dev/null 2>&1 || die "fetch forgejo/$INT failed"
   git merge --ff-only "forgejo/$INT" >/dev/null 2>&1 || die "local $INT diverged from forgejo/$INT - resolve by hand"
+  git tag -f "seven-phase/$FEATURE/phase$((N-1))" >/dev/null 2>&1
+  git push -f forgejo "seven-phase/$FEATURE/phase$((N-1))" >/dev/null 2>&1 || msg "WARNING: could not push anchor tag phase$((N-1))"
 }
 
 case "$CMD" in
@@ -119,6 +121,31 @@ print(json.dumps({
     # Without this, /finish's printed `git merge --squash feat/<f>` integrates the
     # feature WITHOUT the final phase's work (it was only merged on Forgejo, not locally).
     sync_integration
+    ;;
+  rewind)
+    [ -n "$N" ] || die "rewind needs <K> (the phase to rewind to)"
+    case "$N" in 1|2|3|5) ;; *) die "rewind target must be phase 1, 2, 3, or 5 (got '$N')";; esac
+    # current phase = highest existing anchor tag + 1
+    top="$(git tag -l "seven-phase/$FEATURE/phase*" | sed 's#.*/phase##' | grep -E '^[0-9]+$' | sort -n | tail -1)"
+    [ -n "$top" ] || die "no anchor tags for $FEATURE - nothing to rewind"
+    cur=$((top + 1))
+    [ "$N" -lt "$cur" ] || die "cannot rewind to phase $N; current phase is ~$cur (must go backward)"
+    anchor="seven-phase/$FEATURE/phase$((N-1))"
+    git rev-parse -q --verify "refs/tags/$anchor" >/dev/null || die "anchor tag $anchor missing - refusing to reset to a guessed point"
+    git checkout "$INT" 2>/dev/null || die "local $INT missing"
+    git reset --hard "$anchor" || die "reset $INT to $anchor failed"
+    git push --force-with-lease forgejo "$INT" || die "force-push $INT to forgejo failed"
+    msg "reset $INT to $anchor (phase $((N-1)) state); force-pushed forgejo"
+    # discard the orphaned phase branches + stale tags for phases N..cur
+    m="$N"
+    while [ "$m" -le "$cur" ]; do
+      git branch -D "feat/$FEATURE-p$m" >/dev/null 2>&1 && msg "deleted local branch feat/$FEATURE-p$m"
+      git push forgejo --delete "feat/$FEATURE-p$m" >/dev/null 2>&1
+      git tag -d "seven-phase/$FEATURE/phase$m" >/dev/null 2>&1
+      git push forgejo --delete "seven-phase/$FEATURE/phase$m" >/dev/null 2>&1
+      m=$((m + 1))
+    done
+    msg "rewound $FEATURE to phase $N - run /seven-phase:phase$N to redo it"
     ;;
   *) die "unknown command: $CMD" ;;
 esac
