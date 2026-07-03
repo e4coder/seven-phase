@@ -31,7 +31,7 @@ NEVER `origin`. Order matters (the reset wipes `plan.md`, so capture the reason 
    !`echo "run: bash \"$(cat .llm/.pluginroot)/scripts/phase-flow.sh\" rewind $ARGUMENTS"`
    Run that command via Bash. If it errors (missing anchor tag, K out of range, not configured),
    STOP and report exactly what it said - do NOT improvise a reset by hand.
-4. The reset reverted `.llm/<f>/plan.md` to its phase-(K-1) state (`## Phase K..` blank). Write
+4. The reset reverted `.llm/<f>/plan.md` to its phase-(K-1) state (phase K's work is gone). Write
    the rationale from step 2 into `## Phase K` as a `### Rewind note` (what was wrong + what to
    change this time). Commit: `git add .llm/<f>/plan.md && git commit -m "rewind(<f>): note for phase <K> redo"`,
    then `git push --force-with-lease forgejo HEAD`. NEVER push `origin`.

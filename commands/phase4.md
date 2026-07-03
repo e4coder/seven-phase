@@ -29,4 +29,4 @@ Phase 4 - DRY RUN (throwaway):
 6. Append the contents of `/tmp/phase4-$ARGUMENTS.md` under `## Phase 4` in `.llm/$ARGUMENTS/plan.md`.
 7. Commit only the report: `git add .llm/$ARGUMENTS/plan.md && git commit -m "phase4($ARGUMENTS): dry-run report"`, then run `bash "$(cat .llm/.pluginroot)/scripts/phase-flow.sh" finish $ARGUMENTS 4`.
 
-STOP. If the report shows the structs/interfaces/TODOs were insufficient, I will rewind to the relevant phase before Phase 5.
+STOP. If the report shows the structs/interfaces/TODOs were insufficient, rewind to the relevant phase before Phase 5 (with Forgejo configured, run `/seven-phase:rewind <feature> <K>`).

@@ -83,5 +83,41 @@ check "phase2 tag deleted"               "! git rev-parse -q --verify refs/tags/
 check "feat/demo-p3 branch deleted"      "! git rev-parse -q --verify refs/heads/feat/demo-p3 >/dev/null"
 check "rewind never created origin"      "! git remote get-url origin >/dev/null 2>&1"
 
+echo '--- rewind to 5: replay 2->6 (incl the no-PR phase 4), then rewind to 5 (phase4 anchor) ---'
+# feat/demo is currently at the phase1 anchor (checked out above). Replay forward.
+# redo p2
+bash "$FLOW" start demo 2 >/dev/null
+echo p2 >> work.txt && git add work.txt && git -c user.email=t@t -c user.name=t commit -q -m "phase2(demo): interfaces"
+bash "$FLOW" finish demo 2 >/dev/null
+# p3: start merges p2 (tags phase2), cut demo-p3, commit, open PR
+bash "$FLOW" start demo 3 >/dev/null
+echo p3 >> work.txt && git add work.txt && git -c user.email=t@t -c user.name=t commit -q -m "phase3(demo): todos"
+bash "$FLOW" finish demo 3 >/dev/null
+# p4 (special): start merges p3 (tags phase3) and STAYS on feat/demo (no phase branch);
+# finish 4 pushes feat/demo and opens no PR. The dry-run "report" is committed onto feat/demo.
+bash "$FLOW" start demo 4 >/dev/null
+echo "phase4 dry-run report" >> work.txt && git add work.txt && git -c user.email=t@t -c user.name=t commit -q -m "phase4(demo): dry-run report"
+bash "$FLOW" finish demo 4 >/dev/null
+# p5: no open PR (phase 4 opened none) -> sync_integration ff's and tags phase4 at the
+# post-phase-3+report state, then cuts demo-p5. This is the subtle phase-4-anchor case.
+bash "$FLOW" start demo 5 >/dev/null
+echo p5 >> work.txt && git add work.txt && git -c user.email=t@t -c user.name=t commit -q -m "phase5(demo): invariants"
+bash "$FLOW" finish demo 5 >/dev/null
+# p6: start merges p5 (tags phase5), cuts demo-p6
+bash "$FLOW" start demo 6 >/dev/null
+check "phase4 anchor tag exists"         "git rev-parse -q --verify refs/tags/seven-phase/demo/phase4 >/dev/null"
+check "phase5 anchor tag exists"         "git rev-parse -q --verify refs/tags/seven-phase/demo/phase5 >/dev/null"
+P4_TIP="$(git rev-parse seven-phase/demo/phase4)"
+# rewind to phase 5: reset feat/demo to the phase4 anchor (post-phase-3 + dry-run report)
+bash "$FLOW" rewind demo 5 >/dev/null
+git checkout -q feat/demo
+check "feat/demo reset to phase4 anchor" "[ \"\$(git rev-parse feat/demo)\" = \"$P4_TIP\" ]"
+check "phase4 report present on feat/demo" "git show feat/demo:work.txt | grep -q 'phase4 dry-run report'"
+check "phase-5 work gone from feat/demo" "! git show feat/demo:work.txt | grep -qx p5"
+check "phase5 tag deleted"               "! git rev-parse -q --verify refs/tags/seven-phase/demo/phase5 >/dev/null"
+check "phase4 anchor tag still exists"   "git rev-parse -q --verify refs/tags/seven-phase/demo/phase4 >/dev/null"
+check "feat/demo-p6 branch deleted"      "! git rev-parse -q --verify refs/heads/feat/demo-p6 >/dev/null"
+check "rewind-to-5 never created origin" "! git remote get-url origin >/dev/null 2>&1"
+
 [ "$FAILED" -eq 0 ] && echo ALL PASS || echo SOME FAILED
 exit "$FAILED"
