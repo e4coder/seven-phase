@@ -37,6 +37,12 @@ phase; update only the current phase's section.
 - The plugin only ever pushes the `forgejo` remote. `origin` is OFF-LIMITS: the final squash of
   `feat/<feature>` to your real `main` and the push to `origin` are MANUAL steps you run by hand
   (see /seven-phase:finish, which does the Forgejo-side merge and prints the origin step).
+- Rewind is supported and human-invoked only. Phase 4's dry-run report is the canonical trigger:
+  if it shows an earlier struct/interface/TODO was insufficient, run `/seven-phase:rewind <feature> <K>`
+  to discard phases K..current and replay from K. Rewind resets the integration branch to the
+  phase-(K-1) anchor and force-pushes the `forgejo` remote ONLY (never `origin`); it records a
+  `### Rewind note` under `## Phase K` in the plan so the redo avoids the same mistake. Claude
+  never rewinds on its own.
 - Be terse. No preamble. Show diffs, not essays.
 
 ## Phase contract

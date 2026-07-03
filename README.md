@@ -49,6 +49,8 @@ sim/driver as appropriate.
     /seven-phase:phase3 <f>
     /seven-phase:phase4 <f>   # read the deviation report; if a struct/interface is wrong,
                               #   /rewind (Esc Esc) or git reset to that phase, fix, replay
+                              #   (with Forgejo configured, use /seven-phase:rewind instead -
+                              #   see "Rewinding a phase" below)
     /seven-phase:phase5 <f>
     /seven-phase:phase6 <f>   # validation must pass; then open the PR
     /seven-phase:inspect <f>  # read-only, hunk-by-hunk review at any point (Sonnet)
@@ -139,6 +141,21 @@ Forgejo is a dev-cycle mirror; the plugin never pushes `origin`. When `/seven-ph
 prints it, you run the final squash to your real main and push to `origin` yourself:
 
        git checkout main && git merge --squash feat/<f> && git commit && git push origin main
+
+### Rewinding a phase
+
+Phase 4 is a throwaway dry-run whose report exists to reveal that an earlier phase's
+struct/interface/TODO was wrong. When it does, rewind:
+
+       /seven-phase:rewind <f> 2     # discard phases 2..current, reset feat/<f> to the phase-1
+                                      # anchor, force-push forgejo (never origin), and record a
+                                      # Rewind note under ## Phase 2 of the plan
+       /seven-phase:phase2 <f>       # redo phase 2 - the Rewind note tells you what to change
+
+Valid targets are phases 1, 2, 3, and 5 (below the current phase). It's destructive on the
+Forgejo mirror only; `origin` is never touched. Redoing the whole plan (phase 0) means starting
+the feature over by hand. Rewind is human-invoked only - Claude never rewinds on its own, and it
+needs Forgejo configured (it resets against the phase anchor tags and force-pushes there).
 
 To use a Forgejo-native MCP server instead of `gitea-mcp`, keep the server key named
 `forgejo` and update the `command`/`args` plus the `mcp__forgejo__*` tool names in
